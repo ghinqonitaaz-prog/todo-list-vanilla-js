@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kuis Trivia - AI Coder Club</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --good: #4ade80;
+    --bad: #f87171;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, var(--bg), #0b1120);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .container {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .header h1 {
+    font-size: 1.3rem;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .badge {
+    font-size: .8rem;
+    background: rgba(56,189,248,.15);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .screen { display: none; }
+  .screen.active { display: block; animation: fade .3s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .start-screen { text-align: center; }
+  .start-screen p { color: var(--muted); margin: 12px 0 24px; line-height: 1.6; }
+  .btn {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #0b1120;
+    border: none;
+    padding: 14px 32px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform .15s, filter .15s;
+  }
+  .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+  .btn:active { transform: none; }
+  .btn.secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--muted);
+  }
+  .progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .bar {
+    flex: 1;
+    height: 8px;
+    background: #334155;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar > div {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width .3s ease;
+  }
+  .progress span { font-size: .85rem; color: var(--muted); }
+  .question { font-size: 1.15rem; font-weight: 600; line-height: 1.5; margin-bottom: 20px; }
+  .options { display: grid; gap: 10px; }
+  .option {
+    background: #334155;
+    border: 2px solid transparent;
+    color: var(--text);
+    text-align: left;
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: .95rem;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .option:hover:not(:disabled) { border-color: var(--accent); }
+  .option.correct { background: rgba(74,222,128,.15); border-color: var(--good); }
+  .option.wrong { background: rgba(248,113,113,.15); border-color: var(--bad); }
+  .option:disabled { cursor: default; }
+  .feedback { margin-top: 16px; font-weight: 600; min-height: 24px; }
+  .feedback.good { color: var(--good); }
+  .feedback.bad { color: var(--bad); }
+  .next-row { margin-top: 16px; display: flex; justify-content: flex-end; }
+  .result { text-align: center; }
+  .result .score {
+    font-size: 4rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .result p { color: var(--muted); margin: 8px 0 24px; }
+  .result-msg { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+  .actions { display: flex; gap: 12px; justify-content: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>&#9733; Kuis Trivia</h1>
+    <span class="badge" id="bestBadge">Terbaik: 0</span>
+  </div>
+
+  <!-- Start screen -->
+  <div class="screen active" id="startScreen">
+    <div class="start-screen">
+      <p>Uji pengetahuanmu dengan kuis trivia seru ini! Jawab semua pertanyaan dan kumpulkan poin tertinggimu.</p>
+      <button class="btn" onclick="startQuiz()">Mulai Kuis</button>
+    </div>
+  </div>
+
+  <!-- Quiz screen -->
+  <div class="screen" id="quizScreen">
+    <div class="progress">
+      <div class="bar"><div id="barFill"></div></div>
+      <span id="counter">1 / 10</span>
+    </div>
+    <div class="question" id="question"></div>
+    <div class="options" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="next-row" id="nextRow" style="display:none;">
+      <button class="btn" id="nextBtn" onclick="nextQuestion()">Lanjut &rarr;</button>
+    </div>
+  </div>
+
+  <!-- Result screen -->
+  <div class="screen" id="resultScreen">
+    <div class="result">
+      <div class="result-msg" id="resultMsg"></div>
+      <div class="score" id="resultScore"></div>
+      <p id="resultDetail"></p>
+      <div class="actions">
+        <button class="btn" onclick="restart()">Ulangi</button>
+        <button class="btn secondary" onclick="location.reload()">Keluar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const QUESTIONS = [
+  { q: "Apa bahasa pemrograman yang paling umum digunakan untuk pengembangan web di sisi browser?", options: ["Python", "JavaScript", "C++", "Ruby"], answer: 1 },
+  { q: "Siapa yang menciptakan World Wide Web?", options: ["Bill Gates", "Steve Jobs", "Tim Berners-Lee", "Linus Torvalds"], answer: 2 },
+  { q: "Apa singkatan dari HTML?", options: ["HyperText Markup Language", "HighText Machine Language", "Hyperlink Text Management Language", "Home Tool Markup Language"], answer: 0 },
+  { q: "Berapa bit dalam satu byte?", options: ["4", "8", "16", "32"], answer: 1 },
+  { q: "Apa kepanjangan dari URL?", options: ["Universal Resource Locator", "Uniform Resource Locator", "Unified Resource Link", "Universal Reference Locator"], answer: 1 },
+  { q: "Tahun berapa JavaScript pertama kali diperkenalkan?", options: ["1990", "1993", "1995", "1997"], answer: 2 },
+  { q: "Apa fungsi utama CSS?", options: ["Membuat logika program", "Menyimpan data", "Mengatur tampilan halaman web", "Mengelola server"], answer: 2 },
+  { q: "Simbol apa yang digunakan untuk komentar satu baris di JavaScript?", options: ["<!-- -->", "//", "#", "/* */"], answer: 1 },
+  { q: "Manakah yang BUKAN sistem operasi?", options: ["Windows", "Linux", "Android", "Apache"], answer: 3 },
+  { q: "Apa nama perusahaan yang mengembangkan sistem operasi Android?", options: ["Apple", "Microsoft", "Google", "Samsung"], answer: 2 }
+];
+
+let current = 0;
+let score = 0;
+let answered = false;
+let best = Number(localStorage.getItem("quizBest") || 0);
+
+document.getElementById("bestBadge").textContent = "Terbaik: " + best;
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function startQuiz() {
+  current = 0;
+  score = 0;
+  answered = false;
+  showScreen("quizScreen");
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = QUESTIONS[current];
+  document.getElementById("question").textContent = (current + 1) + ". " + q.q;
+  document.getElementById("counter").textContent = (current + 1) + " / " + QUESTIONS.length;
+  document.getElementById("barFill").style.width = ((current + 1) / QUESTIONS.length * 100) + "%";
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("nextRow").style.display = "none";
+
+  const box = document.getElementById("options");
+  box.innerHTML = "";
+  answered = false;
+  q.options.forEach((opt, i) => {
+    const b = document.createElement("button");
+    b.className = "option";
+    b.textContent = String.fromCharCode(65 + i) + ". " + opt;
+    b.addEventListener("click", () => select(i, b));
+    box.appendChild(b);
+  });
+}
+
+function select(i, btn) {
+  if (answered) return;
+  answered = true;
+  const q = QUESTIONS[current];
+  const all = document.querySelectorAll(".option");
+  all.forEach(el => el.disabled = true);
+  const fb = document.getElementById("feedback");
+
+  if (i === q.answer) {
+    score++;
+    btn.classList.add("correct");
+    fb.textContent = "Benar! (+1 poin)";
+    fb.className = "feedback good";
+  } else {
+    btn.classList.add("wrong");
+    all[q.answer].classList.add("correct");
+    fb.textContent = "Salah! Jawaban yang benar: " + String.fromCharCode(65 + q.answer);
+    fb.className = "feedback bad";
+  }
+  document.getElementById("nextRow").style.display = "flex";
+  document.getElementById("nextBtn").textContent =
+    current === QUESTIONS.length - 1 ? "Lihat Hasil" : "Lanjut \u2192";
+}
+
+function nextQuestion() {
+  current++;
+  if (current < QUESTIONS.length) {
+    renderQuestion();
+  } else {
+    finish();
+  }
+}
+
+function finish() {
+  if (score > best) {
+    best = score;
+    localStorage.setItem("quizBest", best);
+    document.getElementById("bestBadge").textContent = "Terbaik: " + best;
+  }
+  const pct = Math.round(score / QUESTIONS.length * 100);
+  const msg = pct === 100 ? "Sempurna! Kamu hebat!" :
+              pct >= 70 ? "Bagus sekali!" :
+              pct >= 40 ? "Lumayan, terus berlatih!" : "Jangan menyerah, coba lagi!";
+  document.getElementById("resultMsg").textContent = msg;
+  document.getElementById("resultScore").textContent = score + "/" + QUESTIONS.length;
+  document.getElementById("resultDetail").textContent =
+    "Nilai: " + pct + "%  |  Skor terbaik: " + best;
+  showScreen("resultScreen");
+}
+
+function restart() {
+  startQuiz();
+}
+</script>
+</body>
+</html>
