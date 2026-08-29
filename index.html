@@ -211,6 +211,146 @@
       opacity: 0.3;
     }
 
+    .hidden {
+      display: none !important;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+      border: 2px solid #e0e0e0;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+
+    .modal-overlay.open .modal {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: #f0f0f0;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      background: #ff4d4f;
+      color: #fff;
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    .form-input:focus {
+      border-color: #667eea;
+    }
+
     @media (max-width: 480px) {
       .container {
         padding: 20px;
@@ -228,6 +368,11 @@
 </head>
 <body>
   <div class="container">
+    <div class="header-actions" style="justify-content: flex-end; margin-bottom: 16px;">
+      <button id="loginBtn" class="btn btn-primary btn-sm" style="display: none;">Masuk</button>
+      <button id="logoutBtn" class="btn btn-secondary btn-sm hidden">Keluar</button>
+      <span id="userEmail" style="font-size: 14px; color: #666; align-self: center;"></span>
+    </div>
     <h1>Todo List</h1>
     <p class="stats" id="stats"></p>
 
@@ -249,9 +394,40 @@
     </div>
   </div>
 
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="formTitle">Masuk</h2>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tabs" style="display: flex; gap: 8px; margin-bottom: 20px;">
+          <button id="loginTab" class="filter-chip active">Masuk</button>
+          <button id="signupTab" class="filter-chip">Daftar</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="emailInput" class="form-input" placeholder="email@contoh.com" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="passwordInput" class="form-input" placeholder="Minimal 6 karakter" />
+        </div>
+        <div id="authError" style="color: #ff4d4f; font-size: 14px; margin-bottom: 12px; min-height: 20px;"></div>
+        <button id="modalSave" class="btn btn-primary" style="width: 100%; justify-content: center;">Masuk</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="./firebase-app.js"></script>
   <script>
     (function () {
       const STORAGE_KEY = "todoList_v1";
+      const COLLECTION = "todos";
+      const DOC_ID = "main";
       let todos = [];
       let currentFilter = "all";
 
@@ -261,18 +437,105 @@
       const stats = document.getElementById("stats");
       const clearCompletedBtn = document.getElementById("clearCompletedBtn");
       const filterBtns = document.querySelectorAll(".filter-btn");
+      const loginBtn = document.getElementById("loginBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const userEmail = document.getElementById("userEmail");
+      const loginModal = document.getElementById("loginModal");
+      const modalOverlay = document.getElementById("modalOverlay");
+      const modalClose = document.getElementById("modalClose");
+      const modalCancel = document.getElementById("modalCancel");
+      const modalSave = document.getElementById("modalSave");
+      const loginTab = document.getElementById("loginTab");
+      const signupTab = document.getElementById("signupTab");
+      const emailInput = document.getElementById("emailInput");
+      const passwordInput = document.getElementById("passwordInput");
+      const formTitle = document.getElementById("formTitle");
+      const authError = document.getElementById("authError");
 
-      function saveTodos() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+      let isLoginMode = true;
+
+      function updateAuthUI(user) {
+        if (user) {
+          loginBtn.classList.add("hidden");
+          logoutBtn.classList.remove("hidden");
+          userEmail.textContent = user.email;
+          loadFromFirebase();
+        } else {
+          loginBtn.classList.remove("hidden");
+          logoutBtn.classList.add("hidden");
+          userEmail.textContent = "";
+          todos = [];
+          render();
+        }
       }
 
-      function loadTodos() {
-        try {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          todos = stored ? JSON.parse(stored) : [];
-        } catch (e) {
-          todos = [];
+      function openModal() {
+        loginModal.classList.add("open");
+        authError.textContent = "";
+        emailInput.value = "";
+        passwordInput.value = "";
+      }
+
+      function closeModal() {
+        loginModal.classList.remove("open");
+      }
+
+      function switchToLogin() {
+        isLoginMode = true;
+        loginTab.classList.add("active");
+        signupTab.classList.remove("active");
+        formTitle.textContent = "Masuk";
+        modalSave.textContent = "Masuk";
+        authError.textContent = "";
+      }
+
+      function switchToSignup() {
+        isLoginMode = false;
+        signupTab.classList.add("active");
+        loginTab.classList.remove("active");
+        formTitle.textContent = "Daftar";
+        modalSave.textContent = "Daftar";
+        authError.textContent = "";
+      }
+
+      async function handleAuth() {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        if (!email || !password) {
+          authError.textContent = "Email dan password harus diisi";
+          return;
         }
+
+        try {
+          if (isLoginMode) {
+            await FirebaseApp.login(email, password);
+          } else {
+            await FirebaseApp.signup(email, password);
+          }
+          closeModal();
+        } catch (err) {
+          authError.textContent = err.message || "Terjadi kesalahan";
+        }
+      }
+
+      async function handleLogout() {
+        await FirebaseApp.logout();
+      }
+
+      function saveTodos() {
+        if (FirebaseApp.currentUser) {
+          FirebaseApp.saveData(COLLECTION, DOC_ID, { todos });
+        } else {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+        }
+      }
+
+      async function loadFromFirebase() {
+        if (!FirebaseApp.currentUser) return;
+        const data = await FirebaseApp.loadData(COLLECTION, DOC_ID);
+        todos = data?.todos || [];
+        render();
       }
 
       function getFilteredTodos() {
@@ -391,8 +654,39 @@
         });
       });
 
-      loadTodos();
-      render();
+      if (loginBtn) {
+        loginBtn.addEventListener("click", openModal);
+      }
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", handleLogout);
+      }
+      if (modalClose) {
+        modalClose.addEventListener("click", closeModal);
+      }
+      if (modalCancel) {
+        modalCancel.addEventListener("click", closeModal);
+      }
+      if (modalSave) {
+        modalSave.addEventListener("click", handleAuth);
+      }
+      if (loginTab) {
+        loginTab.addEventListener("click", switchToLogin);
+      }
+      if (signupTab) {
+        signupTab.addEventListener("click", switchToSignup);
+      }
+      if (modalOverlay) {
+        modalOverlay.addEventListener("click", (e) => {
+          if (e.target === modalOverlay) closeModal();
+        });
+      }
+      if (passwordInput) {
+        passwordInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") handleAuth();
+        });
+      }
+
+      FirebaseApp.init(updateAuthUI);
     })();
   </script>
 </body>
